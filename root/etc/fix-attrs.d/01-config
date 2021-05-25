@@ -1,0 +1,3 @@
+/config true abc:abc 0644 0755
+/config/providers true abc:abc 0600 0700
+/config/wg0.conf false abc:abc 0600 0700

@@ -1,0 +1,56 @@
+#!/usr/bin/with-contenv bash
+# Based on https://github.com/haugene/docker-transmission-openvpn/blob/d7e7a24fbb384df866c2e9ae0e31104895dd26ea/transmission/start.sh
+# shellcheck shell=bash
+
+if [[ ! -f "${TRANSMISSION_HOME:?}/settings.json" ]]; then
+	echo >&2 "Transmission configuration not found at '${TRANSMISSION_HOME:?}/settings.json', exiting"
+	exit 1
+fi
+
+if [[ "$TRANSMISSION_WEB_UI" == "combustion" ]]; then
+	echo "Using Combustion UI"
+	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/combustion-release"
+fi
+
+if [[ "$TRANSMISSION_WEB_UI" == "kettu" ]]; then
+	echo "Using Kettu UI"
+	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/kettu"
+fi
+
+if [[ "$TRANSMISSION_WEB_UI" == "transmission-web-control" ]]; then
+	echo "Using Transmission Web Control UI"
+	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/transmission-web-control"
+fi
+
+if [[ "$TRANSMISSION_WEB_UI" == "flood-for-transmission" ]]; then
+	echo "Using Flood for Transmission UI"
+	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/flood-for-transmission"
+fi
+
+options=(
+	"--foreground"
+	"--config-dir" "${TRANSMISSION_HOME:?}"
+)
+
+log_file=""
+
+case "$TRANSMISSION_LOG" in
+"stdout")
+	log_file="/dev/stdout"
+	;;
+"default")
+	log_file="${TRANSMISSION_HOME}/transmission.log"
+	;;
+?*)
+	log_file="$TRANSMISSION_LOG"
+	;;
+esac
+
+if [[ -n "$log_file" ]]; then
+	options+=("--logfile" "$log_file")
+fi
+
+echo "Starting Transmission"
+
+exec s6-setuidgid "abc" "transmission-daemon" "${options[@]}"
+

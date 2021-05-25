@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Based on https://github.com/haugene/docker-transmission-openvpn/blob/d7e7a24fbb384df866c2e9ae0e31104895dd26ea/scripts/healthcheck.sh
+
+### Network check
+# Ping uses both exit codes 1 and 2. Exit code 2 cannot be used for docker health checks,
+# therefore we use this script to catch error code 2
+
+HOST="$HEALTH_CHECK_HOST"
+
+if [[ -z "$HOST" ]]; then
+    echo "Host not set! Set env 'HEALTH_CHECK_HOST'. For now, using default google.com"
+    HOST="google.com"
+fi
+
+### DNS check
+if ! nslookup $HOST > /dev/null; then
+    echo "DNS resolution failed"
+    exit 1
+fi
+
+### Ping check
+# Get at least 2 responses and timeout after 10 seconds
+if ! ping -c 2 -w 10 "$HOST"; then
+    echo "Network is down"
+    exit 1
+fi
+
+echo "Network is up"
+
+### Service check
+# Expected output is 2, 1 for process and 1 for grep
+TRANSMISSION="$(pgrep transmission | wc -l)"
+
+if [[ "$TRANSMISSION" -ne 1 ]]; then
+	echo "transmission-daemon process not running"
+	exit 1
+fi
+
+echo "transmission-daemon process is running"
+
+exit 0

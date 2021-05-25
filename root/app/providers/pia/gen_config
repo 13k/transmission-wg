@@ -1,0 +1,84 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -o pipefail
+
+WG_CONFIG="${1:?}"
+CREDENTIALS_FILE="/config/providers/pia/credentials.txt"
+
+username="$PIA_USERNAME"
+password="$PIA_PASSWORD"
+region="$PIA_REGION"
+
+write_credentials() {
+	local username="${1:?}"
+	local password="${2:?}"
+	local output="${3:?}"
+
+	mkdir -p "$(dirname "$output")" || return $?
+	printf "%s\n%s\n" "$username" "$password" >"$output" || return $?
+	chmod 600 "$output" || return $?
+}
+
+random_region() {
+	piawgcli show-regions |
+		tail -n+3 |
+		sed -re 's/^.+  \s*(\w+)\s*$/\1/' |
+		shuf -n 1
+}
+
+gen_wg_config() {
+	local username="${1:?}"
+	local password="${2:?}"
+	local region="${3:?}"
+	local output="${4:?}"
+
+	piawgcli create-config \
+		--pia-id="$username" \
+		--pia-password="$password" \
+		--pia-region-id="$region" >"$output"
+
+	chmod 600 "$output" || return $?
+}
+
+if [[ -n "$username" && -n "$password" ]]; then
+	if ! write_credentials "$username" "$password" "$CREDENTIALS_FILE"; then
+		echo >&2 "**** Failed to write wireguard credentials ****"
+		echo >&2 "**** Fix the issues and restart the container ****"
+	fi
+else
+	if [[ -r "$CREDENTIALS_FILE" ]]; then
+		credentials=()
+		readarray -t credentials <"$CREDENTIALS_FILE"
+		username="${credentials[0]}"
+		password="${credentials[1]}"
+	fi
+fi
+
+if [[ -z "$username" || -z "$password" ]]; then
+	echo >&2 "**** PIA_USERNAME or PIA_PASSWORD is not set ****"
+	echo >&2 "**** Configure these environment variables and restart the container ****"
+	sleep infinity
+fi
+
+if [[ -z "$region" || "$region" == "random" ]]; then
+	echo "**** Selecting random region ****"
+
+	region="$(random_region)"
+fi
+
+if [[ -z "$region" ]]; then
+	echo >&2 "**** Failed to select random region ****"
+	echo >&2 "**** Fix the issues and restart the container ****"
+	sleep infinity
+fi
+
+echo "**** Selected region: ${region} ****"
+echo "**** Generating wireguard configuration ($WG_CONFIG) ****"
+
+if ! gen_wg_config "$username" "$password" "$region" "$WG_CONFIG"; then
+	echo >&2 "**** Failed to generate wireguard config ****"
+	echo >&2 "**** Fix the issues and restart the container ****"
+	sleep infinity
+fi
+

@@ -1,0 +1,38 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+if [[ -z "$LOCAL_NETWORK" ]]; then
+	echo "**** Skipping local network configuration ****"
+	exit 0
+fi
+
+default_route() {
+	local addr_iface iface addr
+
+	addr_iface="$(ip route list match 0.0.0.0 | awk '{ if ($5 != "tun0") { print $5 ";" $3; exit } }')" || return $?
+	iface="$(echo "$addr_iface" | cut -d ";" -f1)" || return $?
+	addr="$(echo "$addr_iface" | cut -d ";" -f2)" || return $?
+
+	echo "$iface"
+	echo "$addr"
+}
+
+route=()
+
+readarray -t route < <(default_route) || {
+	echo >&2 "**** Could not find default route, skipping local network configuration ****"
+	exit 1
+}
+
+gw_iface="${route[0]}"
+gw_addr="${route[1]}"
+
+for net in ${LOCAL_NETWORK//,/ }; do
+	echo "**** Adding route to local network ${net} via ${gw_addr} dev ${gw_iface}"
+
+	ip route add "$net" via "$gw_addr" dev "$gw_iface" || {
+		echo >&2 "**** Failed to add route, exiting ****"
+		exit 1
+	}
+done
+
