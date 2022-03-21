@@ -1,0 +1,29 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -o errexit
+set -o pipefail
+
+# shellcheck source=../../../app/lib.sh
+source "/app/lib.sh"
+
+if [[ -z "$PROVIDER" ]]; then
+	fatalw "PROVIDER is not set. Configure it and restart the container"
+fi
+
+infof "Selected provider: %s" "${PROVIDER@Q}"
+
+provider_dir="/app/providers/${PROVIDER}"
+gen_config="${provider_dir}/gen_config"
+
+if [[ ! -d "$provider_dir" ]]; then
+	fatalw "Invalid provider %s" "${PROVIDER@Q}"
+fi
+
+infof "Generating wireguard configuration (%s)" "${WG_CONFIG:?}"
+
+"$gen_config" "${WG_CONFIG:?}" ||
+	fatalw "Failed to generate wireguard config for provider %s" "${PROVIDER@Q}"
+
+notify_startup
+wait_forever

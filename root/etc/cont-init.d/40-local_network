@@ -1,15 +1,21 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
+set -o pipefail
+
+# shellcheck source=../../app/lib.sh
+source "/app/lib.sh"
+
 if [[ -z "$LOCAL_NETWORK" ]]; then
-	echo "**** Skipping local network configuration ****"
+	warnf "Skipping local network configuration"
 	exit 0
 fi
 
 default_route() {
-	local addr_iface iface addr
+	local route addr_iface iface addr
 
-	addr_iface="$(ip route list match 0.0.0.0 | awk '{ if ($5 != "tun0") { print $5 ";" $3; exit } }')" || return $?
+	route="$(ip route list match 0.0.0.0)" || return $?
+	addr_iface="$(awk '{ if ($5 != "tun0") { print $5 ";" $3; exit } }' <<<"$route")" || return $?
 	iface="$(echo "$addr_iface" | cut -d ";" -f1)" || return $?
 	addr="$(echo "$addr_iface" | cut -d ";" -f2)" || return $?
 
@@ -17,22 +23,20 @@ default_route() {
 	echo "$addr"
 }
 
+route_s="$(default_route)" || {
+	fatalf "Could not find default route, skipping local network configuration"
+}
+
 route=()
 
-readarray -t route < <(default_route) || {
-	echo >&2 "**** Could not find default route, skipping local network configuration ****"
-	exit 1
-}
+readarray -t route <<<"$route_s"
 
 gw_iface="${route[0]}"
 gw_addr="${route[1]}"
 
 for net in ${LOCAL_NETWORK//,/ }; do
-	echo "**** Adding route to local network ${net} via ${gw_addr} dev ${gw_iface}"
+	infof "Adding route to local network %s via %s dev %s" "$net" "$gw_addr" "$gw_iface"
 
-	ip route add "$net" via "$gw_addr" dev "$gw_iface" || {
-		echo >&2 "**** Failed to add route, exiting ****"
-		exit 1
-	}
+	ip route add "$net" via "$gw_addr" dev "$gw_iface" ||
+		fatalf "Failed to add route, exiting"
 done
-

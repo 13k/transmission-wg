@@ -1,0 +1,23 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -o errexit
+set -o pipefail
+
+# shellcheck source=./lib.sh
+source "/app/lib.sh"
+
+readiness="$1"
+
+_term() {
+	infof "Caught SIGTERM signal!"
+	exit 0
+}
+
+trap _term SIGTERM
+
+if [[ -n "$readiness" ]]; then
+	notify_startup
+fi
+
+wait_forever
