@@ -1,0 +1,7 @@
+#!/bin/bash
+
+RUNDIR="/run/nordvpn"
+# IFACE="nordlynx"
+
+rm -rf "${RUNDIR:?}"
+# ip link delete "${IFACE:?}" 2>/dev/null

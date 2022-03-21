@@ -6,13 +6,15 @@ set -o pipefail
 # shellcheck source=../../lib.sh
 source "/app/lib.sh"
 
+wait_service "nordvpn" || exit $?
+
 WG_CONFIG="${1:?}"
-CREDENTIALS_FILE="${CONFIG_DIR:?}/providers/pia/credentials.txt"
+CREDENTIALS_FILE="${CONFIG_DIR:?}/providers/nordvpn/credentials.txt"
+IFACE="nordlynx"
 
 random_region() {
-	piawgcli show-regions |
-		tail -n+3 |
-		sed -re 's/^.+  \s*(\w+)\s*$/\1/' |
+	nordvpn countries |
+		sed -re 's/, /\n/g' |
 		shuf -n 1
 }
 
@@ -22,19 +24,42 @@ gen_wg_config() {
 	local region="${3:?}"
 	local output="${4:?}"
 
-	piawgcli create-config \
-		--pia-id="$username" \
-		--pia-password="$password" \
-		--pia-region-id="$region" >"$output" ||
+	nordvpn set technology "nordlynx" ||
+		return $?
+
+	nordvpn logout >/dev/null
+
+	nordvpn login --legacy --username "$username" --password "$password" ||
+		return $?
+
+	local connect_args=()
+
+	if [[ "$region" != "best" ]]; then
+		connect_args+=("$region")
+	fi
+
+	nordvpn connect "${connect_args[@]}" ||
+		return $?
+
+	local cidr
+
+	cidr="$(ip -br addr show dev "$IFACE" | awk '{print $3}')" ||
+		return $?
+
+	wg showconf "$IFACE" |
+		sed -re "/^\[Interface\]/ a Address = ${cidr}" >"$output" ||
+		return $?
+
+	nordvpn disconnect ||
 		return $?
 
 	chmod 600 "$output"
 }
 
 main() {
-	local username="$PIA_USERNAME"
-	local password="$PIA_PASSWORD"
-	local region="$PIA_REGION"
+	local username="$NORDVPN_USERNAME"
+	local password="$NORDVPN_PASSWORD"
+	local region="$NORDVPN_REGION"
 
 	if [[ -n "$username" && -n "$password" ]]; then
 		write_credentials "$username" "$password" "$CREDENTIALS_FILE" ||
@@ -52,18 +77,18 @@ main() {
 	fi
 
 	if [[ -z "$username" || -z "$password" ]]; then
-		fatalw "PIA_USERNAME or PIA_PASSWORD is not set. Configure these environment variables and restart the container"
+		fatalw "NORDVPN_USERNAME or NORDVPN_PASSWORD is not set. Configure these environment variables and restart the container"
 	fi
 
-	if [[ -z "$region" || "$region" == "random" ]]; then
+	if [[ -z "$region" ]]; then
+		region="best"
+	fi
+
+	if [[ "$region" == "random" ]]; then
 		infof "Selecting random region"
 
 		region="$(random_region)" ||
 			fatalf "Failed to select random region"
-	fi
-
-	if [[ -z "$region" ]]; then
-		fatalw "Failed to select random region. Fix the issues and restart the container"
 	fi
 
 	infof "Selected region: %s" "${region@Q}"

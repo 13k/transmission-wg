@@ -1,30 +1,30 @@
 #!/usr/bin/with-contenv bash
-# Based on https://github.com/haugene/docker-transmission-openvpn/blob/d7e7a24fbb384df866c2e9ae0e31104895dd26ea/transmission/start.sh
 # shellcheck shell=bash
+# Based on https://github.com/haugene/docker-transmission-openvpn/blob/d7e7a24fbb384df866c2e9ae0e31104895dd26ea/transmission/start.sh
 
-if [[ ! -f "${TRANSMISSION_HOME:?}/settings.json" ]]; then
-	echo >&2 "Transmission configuration not found at '${TRANSMISSION_HOME:?}/settings.json', exiting"
-	exit 1
+set -o errexit
+set -o pipefail
+
+# shellcheck source=../../../app/lib.sh
+source "/app/lib.sh"
+
+wait_service "wireguard"
+
+SETTINGS_FILE="${TRANSMISSION_HOME:?}/settings.json"
+
+if [[ ! -f "$SETTINGS_FILE" ]]; then
+	fatalf "Transmission configuration not found at %s" "$SETTINGS_FILE"
 fi
 
-if [[ "$TRANSMISSION_WEB_UI" == "combustion" ]]; then
-	echo "Using Combustion UI"
-	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/combustion-release"
-fi
+WEB_UI_PREFIX="/opt/transmission-ui"
 
-if [[ "$TRANSMISSION_WEB_UI" == "kettu" ]]; then
-	echo "Using Kettu UI"
-	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/kettu"
-fi
+if [[ -n "$TRANSMISSION_WEB_UI" ]]; then
+	WEB_UI_PATH="${WEB_UI_PREFIX}/${TRANSMISSION_WEB_UI}"
 
-if [[ "$TRANSMISSION_WEB_UI" == "transmission-web-control" ]]; then
-	echo "Using Transmission Web Control UI"
-	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/transmission-web-control"
-fi
-
-if [[ "$TRANSMISSION_WEB_UI" == "flood-for-transmission" ]]; then
-	echo "Using Flood for Transmission UI"
-	export TRANSMISSION_WEB_HOME="/opt/transmission-ui/flood-for-transmission"
+	if [[ -d "$WEB_UI_PATH" ]]; then
+		infof "Using web UI: %s" "$TRANSMISSION_WEB_UI"
+		export TRANSMISSION_WEB_HOME="$WEB_UI_PATH"
+	fi
 fi
 
 options=(
@@ -50,7 +50,7 @@ if [[ -n "$log_file" ]]; then
 	options+=("--logfile" "$log_file")
 fi
 
-echo "Starting Transmission"
+infof "Starting Transmission"
 
-exec s6-setuidgid "abc" "transmission-daemon" "${options[@]}"
-
+exec s6-setuidgid "abc" \
+	"transmission-daemon" "${options[@]}"

@@ -1,0 +1,25 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -o errexit
+set -o pipefail
+
+# shellcheck source=../../../app/lib.sh
+source "/app/lib.sh"
+
+RUNDIR="/run/nordvpn"
+BIN="/usr/sbin/nordvpnd"
+
+if [[ "$PROVIDER" != "nordvpn" ]]; then
+	infof "Not using nordvpnd service"
+
+	start_noop_service "notify_startup"
+fi
+
+if [[ ! -d "${RUNDIR:?}" ]]; then
+	mkdir -m 0770 "${RUNDIR:?}"
+fi
+
+infof "Starting nordvpnd service"
+
+s6-notifyoncheck "${BIN:?}"
