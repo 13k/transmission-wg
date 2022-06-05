@@ -11,7 +11,7 @@ clean: ## Remove image (env var: IMAGE)
 
 .PHONY: image
 image: ## Build image (env var: IMAGE)
-	$(DOCKER) build -t "$(IMAGE)" .
+	$(DOCKER) build --pull -t "$(IMAGE)" .
 
 .PHONY: publish
 publish: ## Publish image to Docker Hub (env var: IMAGE)
