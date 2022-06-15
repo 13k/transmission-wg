@@ -1,11 +1,12 @@
 #!/usr/bin/with-contenv bash
+# vim: ft=sh
 # shellcheck shell=bash
 # Based on https://github.com/haugene/docker-transmission-openvpn/blob/d7e7a24fbb384df866c2e9ae0e31104895dd26ea/transmission/start.sh
 
 set -o errexit
 set -o pipefail
 
-# shellcheck source=../../../app/lib.sh
+# shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
 wait_service "wireguard"
@@ -19,7 +20,7 @@ fi
 WEB_UI_PREFIX="/opt/transmission-ui"
 
 if [[ -n "$TRANSMISSION_WEB_UI" ]]; then
-	WEB_UI_PATH="${WEB_UI_PREFIX}/${TRANSMISSION_WEB_UI}"
+	WEB_UI_PATH="$WEB_UI_PREFIX/$TRANSMISSION_WEB_UI"
 
 	if [[ -d "$WEB_UI_PATH" ]]; then
 		infof "Using web UI: %s" "$TRANSMISSION_WEB_UI"
@@ -39,7 +40,7 @@ case "$TRANSMISSION_LOG" in
 	log_file="/dev/stdout"
 	;;
 "default")
-	log_file="${TRANSMISSION_HOME}/transmission.log"
+	log_file="$TRANSMISSION_HOME/transmission.log"
 	;;
 ?*)
 	log_file="$TRANSMISSION_LOG"

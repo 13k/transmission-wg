@@ -1,9 +1,10 @@
 #!/usr/bin/with-contenv bash
+# vim: ft=sh
 # shellcheck shell=bash
 
 set -o pipefail
 
-# shellcheck source=../../app/lib.sh
+# shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
 if [[ -z "$LOCAL_NETWORK" ]]; then
@@ -33,8 +34,11 @@ readarray -t route <<<"$route_s"
 
 gw_iface="${route[0]}"
 gw_addr="${route[1]}"
+networks=()
 
-for net in ${LOCAL_NETWORK//,/ }; do
+readarray -t -d ',' networks < <(echo -n "$LOCAL_NETWORK")
+
+for net in "${networks[@]}"; do
 	infof "Adding route to local network %s via %s dev %s" "$net" "$gw_addr" "$gw_iface"
 
 	ip route add "$net" via "$gw_addr" dev "$gw_iface" ||

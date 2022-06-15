@@ -1,9 +1,10 @@
 #!/usr/bin/with-contenv bash
+# vim: ft=sh
 # shellcheck shell=bash
 
 set -o pipefail
 
-# shellcheck source=../../lib.sh
+# shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
 WG_CONFIG="${1:?}"

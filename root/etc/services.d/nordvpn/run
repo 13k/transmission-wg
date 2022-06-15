@@ -1,10 +1,11 @@
 #!/usr/bin/with-contenv bash
+# vim: ft=sh
 # shellcheck shell=bash
 
 set -o errexit
 set -o pipefail
 
-# shellcheck source=../../../app/lib.sh
+# shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
 RUNDIR="/run/nordvpn"
