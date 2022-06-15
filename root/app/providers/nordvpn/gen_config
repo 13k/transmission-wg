@@ -1,9 +1,10 @@
 #!/usr/bin/with-contenv bash
+# vim: ft=sh
 # shellcheck shell=bash
 
 set -o pipefail
 
-# shellcheck source=../../lib.sh
+# shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
 wait_service "nordvpn" || exit $?
@@ -12,7 +13,7 @@ WG_CONFIG="${1:?}"
 CREDENTIALS_FILE="${CONFIG_DIR:?}/providers/nordvpn/credentials.txt"
 IFACE="nordlynx"
 
-random_region() {
+random_server() {
 	nordvpn countries |
 		sed -re 's/, /\n/g' |
 		shuf -n 1
@@ -21,7 +22,7 @@ random_region() {
 gen_wg_config() {
 	local username="${1:?}"
 	local password="${2:?}"
-	local region="${3:?}"
+	local server="${3:?}"
 	local output="${4:?}"
 
 	nordvpn set technology "nordlynx" ||
@@ -34,8 +35,8 @@ gen_wg_config() {
 
 	local connect_args=()
 
-	if [[ "$region" != "best" ]]; then
-		connect_args+=("$region")
+	if [[ "$server" != "best" ]]; then
+		connect_args+=("$server")
 	fi
 
 	nordvpn connect "${connect_args[@]}" ||
@@ -47,7 +48,7 @@ gen_wg_config() {
 		return $?
 
 	wg showconf "$IFACE" |
-		sed -re "/^\[Interface\]/ a Address = ${cidr}" >"$output" ||
+		sed -re "/^\[Interface\]/ a Address = $cidr" >"$output" ||
 		return $?
 
 	nordvpn disconnect ||
@@ -59,7 +60,7 @@ gen_wg_config() {
 main() {
 	local username="$NORDVPN_USERNAME"
 	local password="$NORDVPN_PASSWORD"
-	local region="$NORDVPN_REGION"
+	local server="$NORDVPN_SERVER"
 
 	if [[ -n "$username" && -n "$password" ]]; then
 		write_credentials "$username" "$password" "$CREDENTIALS_FILE" ||
@@ -80,20 +81,20 @@ main() {
 		fatalw "NORDVPN_USERNAME or NORDVPN_PASSWORD is not set. Configure these environment variables and restart the container"
 	fi
 
-	if [[ -z "$region" ]]; then
-		region="best"
+	if [[ -z "$server" ]]; then
+		server="best"
 	fi
 
-	if [[ "$region" == "random" ]]; then
-		infof "Selecting random region"
+	if [[ "$server" == "random" ]]; then
+		infof "Selecting random server"
 
-		region="$(random_region)" ||
-			fatalf "Failed to select random region"
+		server="$(random_server)" ||
+			fatalf "Failed to select random server"
 	fi
 
-	infof "Selected region: %s" "${region@Q}"
+	infof "Selected server: %s" "${server@Q}"
 
-	gen_wg_config "$username" "$password" "$region" "$WG_CONFIG" ||
+	gen_wg_config "$username" "$password" "$server" "$WG_CONFIG" ||
 		fatalw "Failed to generate wireguard config. Fix the issues and restart the container"
 }
 
