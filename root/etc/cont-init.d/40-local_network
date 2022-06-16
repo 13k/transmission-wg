@@ -2,15 +2,16 @@
 # vim: ft=sh
 # shellcheck shell=bash
 
+set -o errexit
 set -o pipefail
-
-# shellcheck source=root/app/lib.sh
-source "/app/lib.sh"
 
 if [[ -z "$LOCAL_NETWORK" ]]; then
 	warnf "Skipping local network configuration"
 	exit 0
 fi
+
+# shellcheck source=root/app/lib.sh
+source "/app/lib.sh"
 
 default_route() {
 	local route addr_iface iface addr
@@ -24,6 +25,7 @@ default_route() {
 	echo "$addr"
 }
 
+# shellcheck disable=2310,2311
 route_s="$(default_route)" || {
 	fatalf "Could not find default route, skipping local network configuration"
 }

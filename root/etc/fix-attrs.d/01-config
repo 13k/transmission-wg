@@ -1,3 +1,0 @@
-/var/lib/transmission true abc:abc 0644 0755
-/var/lib/transmission/providers true abc:abc 0600 0700
-/var/lib/transmission/wg0.conf false abc:abc 0600 0700
