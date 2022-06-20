@@ -5,13 +5,13 @@
 set -o errexit
 set -o pipefail
 
+# shellcheck source=root/app/lib.sh
+source "/app/lib.sh"
+
 if [[ -z "$LOCAL_NETWORK" ]]; then
 	warnf "Skipping local network configuration"
 	exit 0
 fi
-
-# shellcheck source=root/app/lib.sh
-source "/app/lib.sh"
 
 default_route() {
 	local route addr_iface iface addr
