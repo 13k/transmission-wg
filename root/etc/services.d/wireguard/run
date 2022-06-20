@@ -17,12 +17,14 @@ _term() {
 
 trap _term SIGTERM
 
-infof "Connecting ..."
+if [[ -f "${WG_CONFIG:?}.noconn" ]]; then
+	warnf "Skipping wg-quick connection (already connected via provider)"
+else
+	infof "Connecting ..."
 
-wg-quick up wg0
+	wg-quick up wg0
+fi
 
 infof "Connected!"
-
 notify_startup
-
 wait_forever

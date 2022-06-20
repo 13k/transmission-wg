@@ -25,6 +25,11 @@ gen_wg_config() {
 	local server="${3:?}"
 	local output="${4:?}"
 
+	local local_net
+
+	local_net="$(ip route | tail -1 | awk '{print $1}')" ||
+		return $?
+
 	nordvpn set technology "nordlynx" ||
 		return $?
 
@@ -44,14 +49,20 @@ gen_wg_config() {
 
 	local cidr
 
-	cidr="$(ip -br addr show dev "$IFACE" | awk '{print $3}')" ||
+	cidr="$(ip -br addr show dev "${IFACE:?}" | awk '{print $3}')" ||
 		return $?
 
-	wg showconf "$IFACE" |
+	wg showconf "${IFACE:?}" |
 		sed -re "/^\[Interface\]/ a Address = $cidr" >"$output" ||
 		return $?
 
-	nordvpn disconnect ||
+	nordvpn whitelist add subnet "$local_net" ||
+		return $?
+
+	# nordvpn disconnect ||
+	# 	return $?
+
+	touch "$output.noconn" ||
 		return $?
 
 	chmod 600 "$output"
@@ -63,14 +74,14 @@ main() {
 	local server="$NORDVPN_SERVER"
 
 	if [[ -n "$username" && -n "$password" ]]; then
-		write_credentials "$username" "$password" "$CREDENTIALS_FILE" ||
+		write_credentials "$username" "$password" "${CREDENTIALS_FILE:?}" ||
 			fatalw "Failed to write wireguard credentials. Fix the issues and restart the container"
 	else
-		if [[ -r "$CREDENTIALS_FILE" ]]; then
+		if [[ -r "${CREDENTIALS_FILE:?}" ]]; then
 			local -A credentials
 
-			read_credentials "$CREDENTIALS_FILE" credentials ||
-				fatalf "Failed to read credentials from %s" "$CREDENTIALS_FILE"
+			read_credentials "${CREDENTIALS_FILE:?}" credentials ||
+				fatalf "Failed to read credentials from %s" "${CREDENTIALS_FILE:?}"
 
 			username="${credentials["username"]}"
 			password="${credentials["password"]}"
@@ -94,7 +105,7 @@ main() {
 
 	infof "Selected server: %s" "${server@Q}"
 
-	gen_wg_config "$username" "$password" "$server" "$WG_CONFIG" ||
+	gen_wg_config "$username" "$password" "$server" "${WG_CONFIG:?}" ||
 		fatalw "Failed to generate wireguard config. Fix the issues and restart the container"
 }
 
