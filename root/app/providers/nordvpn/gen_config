@@ -9,8 +9,7 @@ source "/app/lib.sh"
 
 wait_service "nordvpn" || exit $?
 
-WG_CONFIG="${1:?}"
-CREDENTIALS_FILE="${CONFIG_DIR:?}/providers/nordvpn/credentials.txt"
+CREDENTIALS_FILE="${PROVIDERS_PREFIX:?}/nordvpn/credentials.txt"
 IFACE="nordlynx"
 
 random_server() {

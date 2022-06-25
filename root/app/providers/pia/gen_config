@@ -7,8 +7,7 @@ set -o pipefail
 # shellcheck source=root/app/lib.sh
 source "/app/lib.sh"
 
-WG_CONFIG="${1:?}"
-CREDENTIALS_FILE="${CONFIG_DIR:?}/providers/pia/credentials.txt"
+CREDENTIALS_FILE="${PROVIDERS_PREFIX:?}/pia/credentials.txt"
 
 random_region() {
 	piawgcli show-regions |
